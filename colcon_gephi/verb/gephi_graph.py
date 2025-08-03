@@ -5,7 +5,6 @@ import networkx as nx
 from colcon_core.package_selection import get_package_descriptors, add_arguments
 from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
-from fs.errors import InvalidPath
 from git import Repo, InvalidGitRepositoryError
 from networkx.drawing import nx_pydot
 

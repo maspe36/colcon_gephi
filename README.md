@@ -6,10 +6,11 @@ The .dot file is generated for the current working directory, and uses the same 
 build the nodes and edges.
 
 ## Usage
+
 ```bash
 cd ros2_rolling/
 colcon gephi_graph
 ```
 
-The generated `.dot` file will have the name of the directory the command was run in. So in this case, 
+The generated `.dot` file will have the name of the directory the command was run in. So in this case,
 it is `ros2_rolling.dot`
