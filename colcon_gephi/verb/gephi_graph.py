@@ -1,15 +1,37 @@
 import os
+from pathlib import Path
 
 import networkx as nx
 from colcon_core.package_selection import get_package_descriptors, add_arguments
 from colcon_core.plugin_system import satisfies_version
 from colcon_core.verb import VerbExtensionPoint
+from fs.errors import InvalidPath
+from git import Repo, InvalidGitRepositoryError
 from networkx.drawing import nx_pydot
+
+
+def find_repo(path):
+    """
+    Get a git.Repo from the given path. If not found, search the
+    parent folders until we hit the current working directory or return None.
+    """
+
+    if path == os.getcwd():
+        return None
+
+    try:
+        return Repo(path)
+    except InvalidGitRepositoryError:
+        return find_repo(os.path.join(path, os.pardir))
+    except:
+        # Probably a weird setup, like not having an "origin" remote
+        # or maybe symlinks? Either way, we give up.
+        return None
 
 
 class GephiGraphVerb(VerbExtensionPoint):
     """
-    Generate a dot file that can be inspected in [Gephi](https://github.com/gephi/gephi).
+    Generate a dot file that can be inspected in Gephi.
     """
 
     def __init__(self):  # noqa: D107
@@ -28,18 +50,25 @@ class GephiGraphVerb(VerbExtensionPoint):
 
     def main(self, *, context):  # noqa: D102
         args = context.args
-
         descriptors = get_package_descriptors(args)
+        packages_in_ws = set([d.name for d in descriptors])
 
         graph = nx.DiGraph()
 
-        packages_in_ws = set([d.name for d in descriptors])
-
         for descriptor in descriptors:
+            metadata = descriptor.metadata
+
+            if repo := find_repo(descriptor.path):
+                if repo.remotes:
+                    metadata['repo'] = Path(str(repo.remotes.origin.url)).stem
+                    metadata['remote'] = repo.remotes.origin.url
+                else:
+                    metadata['repo'] = Path(repo.working_tree_dir).name
+
             graph.add_node(descriptor.name,
                            path=descriptor.path,
                            type=descriptor.type,
-                           metadata=descriptor.metadata)
+                           **metadata)
 
             # Only find edges for this node that exist within this workspace
             for dep_type in ['build', 'run', 'test']:
@@ -48,7 +77,6 @@ class GephiGraphVerb(VerbExtensionPoint):
                         graph.add_edge(descriptor.name, dependency, type=dep_type)
 
         # For now, default to where this command was run
-        print(os.getcwd())
         name = os.path.basename(os.getcwd())
         nx_pydot.write_dot(graph, f'{name}.dot')
 
