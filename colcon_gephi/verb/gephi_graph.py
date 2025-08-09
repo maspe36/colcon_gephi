@@ -22,7 +22,7 @@ def find_repo(path):
         return Repo(path)
     except InvalidGitRepositoryError:
         return find_repo(os.path.join(path, os.pardir))
-    except:
+    except Exception:
         # Probably a weird setup, like not having an "origin" remote
         # or maybe symlinks? Either way, we give up.
         return None
@@ -56,6 +56,8 @@ class GephiGraphVerb(VerbExtensionPoint):
 
         for descriptor in descriptors:
             metadata = descriptor.metadata
+            metadata['path'] = descriptor.path
+            metadata['type'] = descriptor.name
 
             if repo := find_repo(descriptor.path):
                 if repo.remotes:
@@ -64,10 +66,7 @@ class GephiGraphVerb(VerbExtensionPoint):
                 else:
                     metadata['repo'] = Path(repo.working_tree_dir).name
 
-            graph.add_node(descriptor.name,
-                           path=descriptor.path,
-                           type=descriptor.type,
-                           **metadata)
+            graph.add_node(descriptor.name, **metadata)
 
             # Only find edges for this node that exist within this workspace
             for dep_type in ['build', 'run', 'test']:
