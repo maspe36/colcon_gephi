@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "colcon-gephi"
+description = "Extension for colcon to support support generating gexf files which can be inspected in Gephi"
+version = "0.1.0"
+
+authors = [
+    { name="Sam Privett", email="sam@privett.dev" }
+]
+keywords = [
+    "colcon",
+]
+
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Plugins",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Topic :: Software Development :: Build Tools",
+]
+license = {text = "Apache License (2.0)"}
+
+requires-python = ">=3.8"
+dependencies = [
+    "GitPython ~= 3.1",
+    "colcon-core >= 0.19",
+    "networkx >= 3.5",
+]
+
+[project.entry-points."colcon_core.verb"]
+gephi_graph = "colcon_gephi.verb.gephi_graph:GephiGraphVerb"

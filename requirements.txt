@@ -1,3 +1,0 @@
-GitPython ~= 3.1
-colcon-core >= 0.19
-networkx >= 3.5
