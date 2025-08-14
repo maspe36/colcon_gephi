@@ -1,5 +1,9 @@
+import json
 import os
+import shutil
+import subprocess
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import Dict
@@ -13,6 +17,8 @@ from git import Repo, InvalidGitRepositoryError
 from networkx import generate_gexf, write_gml
 from networkx.drawing.nx_pydot import write_dot
 
+
+CLOC_FOUND = shutil.which("cloc") is not None
 
 class SupportedFileFormats(Enum):
     """
@@ -51,7 +57,29 @@ def find_repo(path):
         return None
 
 
-def build_attributes(descriptor: PackageDescriptor) -> Dict[str, str]:
+def build_cloc_attributes(paths):
+    result = subprocess.run(
+        ["cloc", "--json", "--by-file"] + paths,
+        text=True,
+        capture_output=True,
+        check=True
+    )
+
+    # Now, we need to create a dictionary with the sum of all useful `cloc` stats with a key for each given path
+    data = json.loads(result.stdout)
+
+    cloc_attributes = defaultdict(list)
+
+    for package in paths:
+        for key, value in data.items():
+            if key.startswith(package):
+                value["file"] = key
+                cloc_attributes[package].append(value)
+
+    return cloc_attributes
+
+
+def build_attributes(descriptor: PackageDescriptor) -> Dict[str, any]:
     """
     Construct a dictionary of string attributes for a package node in the dependency graph.
 
@@ -69,7 +97,9 @@ def build_attributes(descriptor: PackageDescriptor) -> Dict[str, str]:
 
     if repo := find_repo(descriptor.path):
         if repo.remotes:
+            # noinspection PyUnresolvedReferences
             attributes['repo'] = Path(str(repo.remotes.origin.url)).stem
+            # noinspection PyUnresolvedReferences
             attributes['remote'] = repo.remotes.origin.url
         else:
             attributes['repo'] = Path(repo.working_tree_dir).name
@@ -112,10 +142,31 @@ class GephiGraphVerb(VerbExtensionPoint):
         descriptors = get_package_descriptors(args)
         packages_in_ws = set([d.name for d in descriptors])
 
+        cloc_attributes = {}
+        if CLOC_FOUND:
+            print('cloc found, running...')
+            cloc_attributes = build_cloc_attributes([str(d.path) for d in descriptors])
+        else:
+            print('No cloc executable found, skipping associated node attributes')
+
         graph = nx.DiGraph()
 
         for descriptor in descriptors:
             attributes = build_attributes(descriptor)
+
+            comment_count = 0
+            code_count = 0
+            for f in cloc_attributes[str(descriptor.path)]:
+                for k,v in f.items():
+                    if k == 'comment':
+                        comment_count += v
+                    elif k == 'code':
+                        code_count += v
+
+            attributes['lines_of_comments'] = comment_count
+            attributes['lines_of_code'] = code_count
+            attributes['number_of_files'] = len(cloc_attributes[str(descriptor.path)])
+
             graph.add_node(descriptor.name, **attributes)
 
             # Only find edges for this node that exist within this workspace
@@ -145,6 +196,7 @@ class GephiGraphVerb(VerbExtensionPoint):
         elif args.format == SupportedFileFormats.GML.value:
             write_gml(graph, f'{name}.gml')
             print(f'Wrote gml file to {name}.gml')
+
         elif args.format == SupportedFileFormats.DOT.value:
             write_dot(graph, f'{name}.dot')
             print(f'Wrote dot file to {name}.dot')

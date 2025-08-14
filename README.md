@@ -20,6 +20,7 @@ Features
     - Maintainers
     - Version
     - Git repository name and remote URL (if applicable)
+    - Lines of Code (see [Optional Dependencies](#optional-dependencies))
 - Includes edges for build, run, and test dependencies between packages in the workspace.
 - Produces output ready to open in Gephi — no manual attribute editing required.
 
@@ -37,3 +38,15 @@ To change the file format, pass the `--format` flag.
 ```bash
 colcon gephi_graph --format gml
 ```
+
+## Optional Dependencies
+This package optionally depends on [cloc](https://github.com/AlDanial/cloc/) to add a node attribute for lines of code. 
+If `cloc` is not found on the system, a warning is printed, and the attribute is simply not added.
+
+## Gephi Tips
+
+### Node Size Based on Attribute
+For whatever reason, when networkx exports a graph, the resulting (by default) `.dot` file will not respect data types.
+Everything will be a string. This means that you cannot do things like change the size of nodes based on attributes like
+`lines_of_code` by default. You need to make a new column, and copy the data over to this new column with the 
+appropriate data type.
