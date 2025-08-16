@@ -17,8 +17,8 @@ from git import Repo, InvalidGitRepositoryError
 from networkx import generate_gexf, write_gml
 from networkx.drawing.nx_pydot import write_dot
 
-
 CLOC_FOUND = shutil.which("cloc") is not None
+
 
 class SupportedFileFormats(Enum):
     """
@@ -58,6 +58,10 @@ def find_repo(path):
 
 
 def build_cloc_attributes(paths):
+    """
+    Return a dictionary with keys for the given directory paths, and values containing a list of per-file cloc stats.
+    """
+
     result = subprocess.run(
         ["cloc", "--json", "--by-file"] + paths,
         text=True,
@@ -154,18 +158,19 @@ class GephiGraphVerb(VerbExtensionPoint):
         for descriptor in descriptors:
             attributes = build_attributes(descriptor)
 
-            comment_count = 0
-            code_count = 0
-            for f in cloc_attributes[str(descriptor.path)]:
-                for k,v in f.items():
-                    if k == 'comment':
-                        comment_count += v
-                    elif k == 'code':
-                        code_count += v
+            if CLOC_FOUND:
+                comment_count = 0
+                code_count = 0
+                for f in cloc_attributes[str(descriptor.path)]:
+                    for k, v in f.items():
+                        if k == 'comment':
+                            comment_count += v
+                        elif k == 'code':
+                            code_count += v
 
-            attributes['lines_of_comments'] = comment_count
-            attributes['lines_of_code'] = code_count
-            attributes['number_of_files'] = len(cloc_attributes[str(descriptor.path)])
+                attributes['lines_of_comments'] = comment_count
+                attributes['lines_of_code'] = code_count
+                attributes['number_of_files'] = len(cloc_attributes[str(descriptor.path)])
 
             graph.add_node(descriptor.name, **attributes)
 
