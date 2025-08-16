@@ -26,7 +26,11 @@ classifiers = [
     "Programming Language :: Python",
     "Topic :: Software Development :: Build Tools",
 ]
-license = {text = "Apache License (2.0)"}
+
+license = "Apache License (2.0)"
+license-files = [
+    "LICENSE",
+]
 
 requires-python = ">=3.8"
 dependencies = [
